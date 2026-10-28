@@ -15,7 +15,8 @@ how the app handles loading data and failed saves.
 - Drag cards between columns to change their status.
 - Search, filter, sort, and show more tasks in batches.
 - Copy links that preserve filters and the open task, including after signing in.
-- Stay signed in for up to 30 days by selecting **Keep me signed in**.
+- Stay signed in across tabs during your browser session. Select **Keep me signed in**
+  to stay signed in for up to 30 days after closing and reopening the browser.
 - Simulate a slow connection or make the next save fail from **Sample data** options.
   If a drag-and-drop save fails, the card returns to its previous column.
 

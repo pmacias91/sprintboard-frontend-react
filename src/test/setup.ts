@@ -8,6 +8,7 @@ import sampleUsers from '../../sample_data/users.json';
 import { handlers } from '../mocks/handlers';
 import { repository } from '../mocks/repository';
 import { simulatedNetwork } from '../mocks/network';
+import { sessionStore } from '../lib/session';
 
 const server = setupServer(
   http.get('*/sample_data/tasks.json', () => HttpResponse.json(sampleTasks)),
@@ -17,6 +18,7 @@ const server = setupServer(
 configure({ asyncUtilTimeout: 5_000 });
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }));
 beforeEach(() => {
+  sessionStore.clear();
   localStorage.clear();
   sessionStorage.clear();
   repository.clear();

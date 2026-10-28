@@ -3,9 +3,10 @@ import { sessionUserSchema, type SessionUser } from '../types/auth';
 
 export const REMEMBER_SESSION_DAYS = 30;
 
-const SESSION_KEY = 'sprintboard.session.v2';
-const LEGACY_SESSION_KEY = 'sprintboard.session.v1';
-const SIGN_OUT_KEY = 'sprintboard.session.sign-out';
+const SESSION_COOKIE = 'sprintboard.session.v3';
+const SESSION_SIGNAL_KEY = 'sprintboard.session.changed';
+const LEGACY_SESSION_KEY = 'sprintboard.session.v2';
+const FIRST_SESSION_KEY = 'sprintboard.session.v1';
 const maxTimerDelay = 2_147_483_647;
 const sessionSchema = z.object({
   user: sessionUserSchema,
@@ -20,9 +21,8 @@ let cachedValue = '';
 let cachedUser: SessionUser | null = null;
 let expiryTimer: ReturnType<typeof setTimeout> | undefined;
 
-function readStoredSession(source: StorageSource): StoredSession | null {
+function parseSession(value: string | null): StoredSession | null {
   try {
-    const value = source().getItem(SESSION_KEY);
     const result = sessionSchema.safeParse(value ? JSON.parse(value) : null);
 
     if (
@@ -38,26 +38,42 @@ function readStoredSession(source: StorageSource): StoredSession | null {
   }
 }
 
+function readCookieValue(): string | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  const prefix = `${SESSION_COOKIE}=`;
+  const cookie = document.cookie.split('; ').find((value) => value.startsWith(prefix));
+  return cookie?.slice(prefix.length) ?? null;
+}
+
 function readSession(): StoredSession | null {
-  const persistent = readStoredSession(() => localStorage);
-
-  if (persistent?.expiresAt) {
-    return persistent;
-  }
-
-  const temporary = readStoredSession(() => sessionStorage);
-
-  if (temporary) {
-    return temporary;
-  }
-
-  // Existing demo sessions retain their original, tab-only lifetime.
   try {
-    const legacy = sessionStorage.getItem(LEGACY_SESSION_KEY);
-    const result = sessionUserSchema.safeParse(legacy ? JSON.parse(legacy) : null);
-    return result.success ? { user: result.data, expiresAt: null } : null;
+    const value = readCookieValue();
+    return parseSession(value ? decodeURIComponent(value) : null);
   } catch {
     return null;
+  }
+}
+
+function cookieAttributes(): string {
+  return `Path=/; SameSite=Lax${window.location.protocol === 'https:' ? '; Secure' : ''}`;
+}
+
+function writeSessionCookie(session: StoredSession): void {
+  const value = encodeURIComponent(JSON.stringify(session));
+  const lifetime =
+    session.expiresAt === null
+      ? ''
+      : `; Max-Age=${Math.max(0, Math.ceil((session.expiresAt - Date.now()) / 1000))}`;
+
+  // This frontend demo stores identity only. A real backend should issue an HttpOnly session cookie.
+  // No lifetime attribute means a browser-session cookie, shared by all its tabs.
+  document.cookie = `${SESSION_COOKIE}=${value}; ${cookieAttributes()}${lifetime}`;
+
+  if (readCookieValue() !== value) {
+    throw new Error('The browser could not save the demo session cookie.');
   }
 }
 
@@ -82,9 +98,51 @@ function removeStoredValue(source: StorageSource, key: string): void {
   }
 }
 
-function clearTemporarySession(): void {
-  removeStoredValue(() => sessionStorage, SESSION_KEY);
+function clearLegacySessions(): void {
+  removeStoredValue(() => localStorage, LEGACY_SESSION_KEY);
   removeStoredValue(() => sessionStorage, LEGACY_SESSION_KEY);
+  removeStoredValue(() => sessionStorage, FIRST_SESSION_KEY);
+}
+
+function signalChange(): void {
+  try {
+    // The shared cookie holds the session; this value only notifies other tabs.
+    localStorage.setItem(SESSION_SIGNAL_KEY, crypto.randomUUID());
+  } catch {
+    // Focus/visibility checks still read the shared cookie when localStorage is blocked.
+  }
+
+  publish();
+}
+
+function migrateLegacySession(): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  try {
+    if (readSession() || localStorage.getItem(SESSION_SIGNAL_KEY)) {
+      clearLegacySessions();
+      return;
+    }
+
+    const persistent = parseSession(localStorage.getItem(LEGACY_SESSION_KEY));
+    const temporary = parseSession(sessionStorage.getItem(LEGACY_SESSION_KEY));
+    const first = sessionStorage.getItem(FIRST_SESSION_KEY);
+    const firstUser = sessionUserSchema.safeParse(first ? JSON.parse(first) : null);
+    const session = persistent?.expiresAt
+      ? persistent
+      : (temporary ??
+        (firstUser.success ? { user: firstUser.data, expiresAt: null } : null));
+
+    if (session) {
+      writeSessionCookie(session);
+      clearLegacySessions();
+      signalChange();
+    }
+  } catch {
+    // Invalid or unavailable legacy storage must not prevent a fresh sign-in.
+  }
 }
 
 function scheduleExpiry(): void {
@@ -106,13 +164,12 @@ function publish(): void {
 function onStorage(event: StorageEvent): void {
   if (
     event.storageArea !== localStorage ||
-    (event.key !== SESSION_KEY && event.key !== SIGN_OUT_KEY && event.key !== null)
+    (event.key !== SESSION_SIGNAL_KEY && event.key !== null)
   ) {
     return;
   }
 
-  // A shared login/logout supersedes any older session scoped to this tab.
-  clearTemporarySession();
+  clearLegacySessions();
   publish();
 }
 
@@ -152,27 +209,17 @@ function save(user: SessionUser, rememberMe: boolean): void {
       ? Date.now() + REMEMBER_SESSION_DAYS * 24 * 60 * 60 * 1000
       : null,
   };
-  const storage = rememberMe ? localStorage : sessionStorage;
-
-  // Only demo identity and expiry are saved; credentials never enter either store.
-  storage.setItem(SESSION_KEY, JSON.stringify(session));
-  removeStoredValue(() => sessionStorage, LEGACY_SESSION_KEY);
-  removeStoredValue(() => (rememberMe ? sessionStorage : localStorage), SESSION_KEY);
-  publish();
+  writeSessionCookie(session);
+  clearLegacySessions();
+  signalChange();
 }
 
 function clear(): void {
-  clearTemporarySession();
-  removeStoredValue(() => localStorage, SESSION_KEY);
-
-  try {
-    // A new signal also signs out other tabs with non-persistent sessions.
-    localStorage.setItem(SIGN_OUT_KEY, crypto.randomUUID());
-  } catch {
-    // Local sign-out still works when browser storage cannot accept new writes.
-  }
-
-  publish();
+  document.cookie = `${SESSION_COOKIE}=; ${cookieAttributes()}; Max-Age=0`;
+  clearLegacySessions();
+  signalChange();
 }
+
+migrateLegacySession();
 
 export const sessionStore = { getSnapshot, subscribe, save, clear };

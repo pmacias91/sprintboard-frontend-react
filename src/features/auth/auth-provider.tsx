@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sessionStore.save(authenticatedUser, rememberMe);
     } catch {
       throw new Error(
-        'Your browser couldn’t save this demo session. Allow browser storage and try again.',
+        'Your browser couldn’t save this demo session. Allow cookies and try again.',
       );
     }
   }

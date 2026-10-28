@@ -40,14 +40,40 @@ export async function verifyAuthSession(page: Page): Promise<void> {
   const context = page.context();
   const taskPath = '/my-tasks?priority=high&task=SPR-106';
 
-  // The default session survives reloads, but is not shared with a new window.
-  const isolated = await context.newPage();
-  await isolated.goto(taskPath);
-  await expect(isolated).toHaveURL(expectedLoginPath(taskPath));
-  await isolated.close();
+  // Pasting a link into a new tab shares the login, even without "Keep me signed in".
+  const shared = await context.newPage();
+  await shared.goto(taskPath);
+  await expect(shared).toHaveURL(taskPath);
+  await expect(shared.getByRole('dialog', { name: 'Task details' })).toBeVisible();
+  await shared.reload();
+  await expect(shared.getByRole('dialog', { name: 'Task details' })).toBeVisible();
+  const temporaryCookie = (await context.cookies()).find(
+    (cookie) => cookie.name === 'sprintboard.session.v3',
+  );
+  expect(temporaryCookie?.expires).toBe(-1);
+
+  const browser = context.browser();
+  expect(browser).not.toBeNull();
+  const temporaryState = await context.storageState();
+  // A fresh browser session retains persistent data, but drops session-only cookies.
+  const freshContext = await browser!.newContext({
+    baseURL: 'http://localhost:5173',
+    storageState: {
+      ...temporaryState,
+      cookies: temporaryState.cookies.filter((cookie) => cookie.expires !== -1),
+    },
+  });
+  try {
+    const fresh = await freshContext.newPage();
+    await fresh.goto(taskPath);
+    await expect(fresh).toHaveURL(expectedLoginPath(taskPath));
+  } finally {
+    await freshContext.close();
+  }
 
   await signOut(page);
   await expect(page).toHaveURL(expectedLoginPath('/my-tasks'));
+  await expect(shared).toHaveURL(expectedLoginPath(taskPath));
   await page.goto(taskPath);
   await expect(page).toHaveURL(expectedLoginPath(taskPath));
   await page.reload();
@@ -57,16 +83,14 @@ export async function verifyAuthSession(page: Page): Promise<void> {
   await page.screenshot({ path: '.local/preview/login-remember-mobile.png' });
   await signIn(page, true);
   await expect(page).toHaveURL(taskPath);
+  await expect(shared).toHaveURL(taskPath);
+  await expect(shared.getByRole('dialog', { name: 'Task details' })).toBeVisible();
+  await shared.close();
   const dialog = page.getByRole('dialog', { name: 'Task details' });
   await expect(dialog.getByLabel('Task title', { exact: false })).toHaveValue(
     'Build the project dashboard',
   );
   await dialog.getByRole('button', { name: 'Close dialog' }).click();
-
-  const restored = await context.newPage();
-  await restored.goto('/board');
-  await expect(restored.getByRole('button', { name: /Open SPR-106:/ })).toBeVisible();
-  await restored.close();
 
   const reopened = await context.newPage();
   await reopened.goto('/my-tasks');
@@ -74,12 +98,18 @@ export async function verifyAuthSession(page: Page): Promise<void> {
   await page.reload();
   await expect(page.getByRole('row').filter({ hasText: 'SPR-106' })).toBeVisible();
 
-  // Browser-restored local storage works with completely fresh session storage.
-  const browser = context.browser();
-  expect(browser).not.toBeNull();
+  // A remembered session survives a new browser session with no session-only cookies.
+  const rememberedState = await context.storageState();
+  const rememberedCookie = rememberedState.cookies.find(
+    (cookie) => cookie.name === 'sprintboard.session.v3',
+  );
+  expect(rememberedCookie?.expires).toBeGreaterThan(Date.now() / 1000);
   const restartedContext = await browser!.newContext({
     baseURL: 'http://localhost:5173',
-    storageState: await context.storageState(),
+    storageState: {
+      ...rememberedState,
+      cookies: rememberedState.cookies.filter((cookie) => cookie.expires !== -1),
+    },
   });
 
   try {
@@ -103,13 +133,13 @@ export async function verifyAuthSession(page: Page): Promise<void> {
   await expect(page.getByRole('region', { name: 'My tasks list' })).not.toBeVisible();
   await reopened.close();
 
-  // Opting out after a persistent login must not leave a remembered session behind.
+  // Opting out keeps cross-tab access, without leaving a persistent cookie behind.
   await signIn(page, false);
   await expect(page).toHaveURL('/my-tasks?priority=high');
-  const temporary = await context.newPage();
-  await temporary.goto('/board');
-  await expect(temporary).toHaveURL(expectedLoginPath('/board'));
-  await temporary.close();
+  expect(
+    (await context.cookies()).find((cookie) => cookie.name === 'sprintboard.session.v3')
+      ?.expires,
+  ).toBe(-1);
 
   for (const next of [
     'https://example.invalid/board',
