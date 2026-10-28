@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#7660d9" />
+    <meta name="description" content="Frontend demo for managing projects and tasks." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>SprintBoard · Platform launch</title>
+    <style>
+      .boot-screen {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: #fdfcfb;
+        color: #8c8099;
+        font:
+          13px 'Segoe UI',
+          sans-serif;
+      }
+      .boot-screen img {
+        width: 42px;
+        height: 42px;
+      }
+      .boot-screen strong {
+        color: #55455f;
+        font-size: 21px;
+        letter-spacing: -0.6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="boot-screen" role="status">
+        <img src="/favicon.svg" alt="" /><strong>SprintBoard.</strong
+        ><span>Preparing your workspace…</span>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "alex",
+    "name": "Alex Morgan",
+    "initials": "AM",
+    "color": "lavender",
+    "role": "Frontend developer"
+  },
+  {
+    "id": "sarah",
+    "name": "Sarah Chen",
+    "initials": "SC",
+    "color": "peach",
+    "role": "Product designer"
+  },
+  {
+    "id": "james",
+    "name": "James Wilson",
+    "initials": "JW",
+    "color": "sage",
+    "role": "Backend developer"
+  },
+  {
+    "id": "mia",
+    "name": "Mia Patel",
+    "initials": "MP",
+    "color": "rose",
+    "role": "Full-stack developer"
+  },
+  {
+    "id": "noah",
+    "name": "Noah Fischer",
+    "initials": "NF",
+    "color": "sage",
+    "role": "QA engineer"
+  },
+  {
+    "id": "emma",
+    "name": "Emma Rossi",
+    "initials": "ER",
+    "color": "lavender",
+    "role": "Frontend developer"
+  },
+  {
+    "id": "leo",
+    "name": "Leo Martin",
+    "initials": "LM",
+    "color": "peach",
+    "role": "Platform engineer"
+  },
+  {
+    "id": "ava",
+    "name": "Ava Thompson",
+    "initials": "AT",
+    "color": "rose",
+    "role": "Product manager"
+  },
+  {
+    "id": "lucas",
+    "name": "Lucas Silva",
+    "initials": "LS",
+    "color": "sage",
+    "role": "Backend developer"
+  },
+  {
+    "id": "sofia",
+    "name": "Sofia Garcia",
+    "initials": "SG",
+    "color": "lavender",
+    "role": "UX researcher"
+  }
+]

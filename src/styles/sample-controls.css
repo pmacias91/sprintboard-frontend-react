@@ -1,0 +1,149 @@
+.sample-controls.demo-card {
+  padding: 10px 12px 13px;
+}
+
+.sample-controls-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 26px;
+}
+
+.sample-controls .sample-controls-options {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  min-height: 26px;
+  margin: 0 -4px 0 0;
+  padding: 5px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #a18bb1;
+}
+
+.sample-controls .sample-controls-options:hover,
+.sample-controls .sample-controls-options[data-state='open'] {
+  border-color: #e4d9ed;
+  background: #fdfbff;
+  color: #8965a7;
+}
+
+.sample-controls .sample-controls-counts {
+  margin: 3px 0 0;
+  color: #9a88a6;
+  font-size: 9px;
+  line-height: 1.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.sample-controls .sample-controls-changes {
+  margin: 4px 0 0;
+  color: #a486b7;
+  font-size: 9px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.sample-controls .sample-controls-reload {
+  min-height: 24px;
+  margin-top: 9px;
+  padding: 0;
+  color: #9275a6;
+  font-size: 10px;
+}
+
+.sample-controls .sample-controls-reload:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.sample-controls-popover {
+  z-index: 65;
+  width: 276px;
+  max-width: calc(100vw - 32px);
+  padding: 20px;
+  border: 1px solid #e7dfee;
+  border-radius: 11px;
+  background: #fdfcfb;
+  box-shadow: 0 10px 36px #3c254b15;
+  animation: pop-in 0.15s ease-out;
+}
+
+.sample-controls-popover-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 21px;
+  color: #a187b7;
+}
+
+.sample-controls-popover-heading h2 {
+  color: #796486;
+  font-size: 13px;
+  font-weight: 550;
+  letter-spacing: -0.2px;
+}
+
+.sample-controls-setting > label {
+  display: block;
+  margin-bottom: 8px;
+  color: #8f769f;
+  font-size: 10px;
+  font-weight: 550;
+}
+
+.sample-controls-setting .select-trigger {
+  width: 100%;
+  min-height: 34px;
+  padding: 8px 10px;
+  background: #fff;
+  font-size: 11px;
+}
+
+.sample-controls-setting > p {
+  margin-top: 8px;
+  color: #a08eab;
+  font-size: 10px;
+  line-height: 1.75;
+}
+
+.sample-controls-failure {
+  margin-top: 18px;
+  padding-top: 17px;
+  border-top: 1px solid #ece5f1;
+}
+
+.sample-controls-failure .button {
+  width: 100%;
+  min-height: 34px;
+  font-size: 10px;
+}
+
+.sample-controls-failure .button[aria-pressed='true'] {
+  border-color: #dcd0e8;
+  background: #f1ebf7;
+  color: #9874ad;
+  opacity: 1;
+}
+
+.sample-controls-popover > .sample-controls-memory-note {
+  margin-top: 19px;
+  padding-top: 15px;
+  border-top: 1px solid #ece5f1;
+  color: #a798b0;
+  font-size: 9px;
+  line-height: 1.8;
+}
+
+.sample-controls-confirm .field-error {
+  color: #b17487;
+}
+
+@media (max-height: 700px) {
+  .sample-controls.demo-card {
+    padding-top: 7px;
+    padding-bottom: 9px;
+  }
+}
