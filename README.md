@@ -12,6 +12,7 @@ how the app handles loading data and failed saves.
 ## What you can do
 
 - Create and edit a task's title, description, status, priority, assignee, and due date.
+- Delete tasks from their details, with confirmation before deletion.
 - Drag cards between columns to change their status.
 - Search, filter, sort, and show more tasks in batches.
 - Copy links that preserve filters and the open task, including after signing in.
@@ -24,10 +25,19 @@ how the app handles loading data and failed saves.
 
 - There is no real backend or database. The API and login are simulated; the 10 users
   are sample assignees, not accounts you can sign in with.
-- Task changes stay in memory and are not shared between windows or people.
-  **Refresh tasks** keeps them; reloading the page or clicking **Reload samples**
-  discards them. Staying signed in does not save your task changes.
-- Deleting tasks, comments, attachments, subtasks, and multiple projects are not supported.
+- The JSON files in `sample_data` are the baseline for each new session. Created
+  tasks, edits, moves, and deletions are saved locally for that session and survive
+  page reloads. **Keep me signed in** also preserves them across browser restarts,
+  until the session expires (30 days) or you sign out. Without it, ending the browser
+  session discards the changes. A new sign-in always starts from the JSON baseline.
+  **Refresh tasks** keeps changes; **Reload samples** clears them and restores the
+  original data, including deleted sample tasks. The JSON files are never modified.
+  Tabs in the same session share saved data; refresh tasks to see another tab's edits.
+  Changes are not shared with other browsers or people.
+  If browser storage is blocked or full, the app falls back to memory and displays
+  a warning that changes will be lost on reload. Invalid saved data falls back to
+  the original samples. Clearing site data also removes saved tasks.
+- Comments, attachments, subtasks, and multiple projects are not supported.
 
 ## Run locally
 

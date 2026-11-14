@@ -4,6 +4,7 @@ import { memberService } from '../services/member-service';
 import { taskService } from '../services/task-service';
 import type { Task, TaskInput } from '../types/task';
 import type { DemoSettings } from '../types/demo';
+import { sessionStore } from '../lib/session';
 
 const TASKS_QUERY_KEY = ['tasks'] as const;
 const MEMBERS_QUERY_KEY = ['members'] as const;
@@ -88,7 +89,7 @@ export function useMoveTask() {
         return current.map((task) => (task.id === id ? { ...task, status } : task));
       });
 
-      return { previousStatus };
+      return { previousStatus, sessionId: sessionStore.getSessionId() };
     },
     onSuccess: (saved) => {
       client.setQueryData<Task[]>(TASKS_QUERY_KEY, (tasks = []) => {
@@ -98,7 +99,7 @@ export function useMoveTask() {
     onError: (_error, { id }, context) => {
       const previousStatus = context?.previousStatus;
 
-      if (!previousStatus) {
+      if (!previousStatus || context?.sessionId !== sessionStore.getSessionId()) {
         return;
       }
 
@@ -107,6 +108,24 @@ export function useMoveTask() {
           return task.id === id ? { ...task, status: previousStatus } : task;
         });
       });
+    },
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: DEMO_QUERY_KEY });
+    },
+  });
+}
+
+export function useDeleteTask() {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationKey: TASK_WRITE_KEY,
+    onMutate: () => client.cancelQueries({ queryKey: TASKS_QUERY_KEY }),
+    mutationFn: taskService.delete,
+    onSuccess: ({ id }) => {
+      client.setQueryData<Task[]>(TASKS_QUERY_KEY, (tasks = []) =>
+        tasks.filter((task) => task.id !== id),
+      );
     },
     onSettled: () => {
       void client.invalidateQueries({ queryKey: DEMO_QUERY_KEY });

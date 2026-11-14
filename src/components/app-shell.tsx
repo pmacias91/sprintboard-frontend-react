@@ -18,6 +18,7 @@ import type { Member } from '../types/task';
 import { useAuth } from '../features/auth/auth-context';
 import { Tooltip } from './ui/tooltip';
 import { SampleDataControls } from '../features/demo/sample-data-controls';
+import { useDemoState } from '../hooks/use-tasks';
 
 export function AppShell({
   children,
@@ -37,6 +38,7 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const { signOut } = useAuth();
+  const info = useDemoState();
 
   return (
     <div className={`app-shell ${focusMode ? 'app-shell-focus' : ''}`}>
@@ -144,9 +146,13 @@ export function AppShell({
         </header>
         {children}
         <footer className="app-footer">
-          <span>
+          <span role="status">
             <span className="local-dot" />
-            Changes kept in memory
+            {info.data?.persistence === 'memory'
+              ? 'Storage unavailable. Changes will be lost on reload.'
+              : info.data
+                ? 'Changes saved for this session'
+                : 'Checking local storage…'}
           </span>
         </footer>
       </div>
@@ -176,8 +182,9 @@ export function AppShell({
             <li>
               <strong>Demo data</strong>
               <span>
-                Tasks and edits stay in memory. Reload the page or use Reload samples to
-                restore the original data.
+                Tasks, edits, and deletions are saved for this session. Signing out or
+                ending the session restores the sample data. Keep me signed in also keeps
+                changes across browser restarts. Use Reload samples to reset now.
               </span>
             </li>
           </ul>

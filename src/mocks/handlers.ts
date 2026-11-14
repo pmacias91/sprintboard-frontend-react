@@ -5,6 +5,7 @@ import { simulatedNetwork } from './network';
 import { DEMO_CREDENTIALS, DEMO_USER } from '../config/demo-account';
 import { loginCredentialsSchema } from '../types/auth';
 import { demoSettingsSchema } from '../types/demo';
+import { sessionStore } from '../lib/session';
 
 const origin =
   typeof location === 'undefined' ? 'http://localhost:5173' : location.origin;
@@ -23,6 +24,16 @@ const failedWrite = () =>
     { message: 'This save failed on the simulated connection. Try again.' },
     { status: 503 },
   );
+
+function sessionError(request: Request) {
+  const sessionId = sessionStore.getSessionId();
+  return !sessionId || request.headers.get('X-Demo-Session') !== sessionId
+    ? HttpResponse.json(
+        { message: 'Your session has ended. Sign in again to continue.' },
+        { status: 401 },
+      )
+    : null;
+}
 
 async function demoInfo() {
   return { ...(await repository.info()), ...simulatedNetwork.settings() };
@@ -57,6 +68,10 @@ export const handlers = [
   }),
   http.get(`${api}/members`, async ({ request }) => {
     await simulatedNetwork.wait('read');
+    const unauthorized = sessionError(request);
+    if (unauthorized) {
+      return unauthorized;
+    }
     if (request.signal.aborted) {
       return HttpResponse.error();
     }
@@ -68,6 +83,10 @@ export const handlers = [
   }),
   http.get(`${api}/tasks`, async ({ request }) => {
     await simulatedNetwork.wait('read');
+    const unauthorized = sessionError(request);
+    if (unauthorized) {
+      return unauthorized;
+    }
     if (request.signal.aborted) {
       return HttpResponse.error();
     }
@@ -77,8 +96,12 @@ export const handlers = [
       return sampleError();
     }
   }),
-  http.get(`${api}/demo`, async () => {
+  http.get(`${api}/demo`, async ({ request }) => {
     await delay(80);
+    const unauthorized = sessionError(request);
+    if (unauthorized) {
+      return unauthorized;
+    }
     try {
       return HttpResponse.json(await demoInfo());
     } catch {
@@ -90,6 +113,10 @@ export const handlers = [
       .partial()
       .strict()
       .safeParse(await request.json());
+    const unauthorized = sessionError(request);
+    if (unauthorized) {
+      return unauthorized;
+    }
     if (!result.success) {
       return HttpResponse.json(
         { message: 'Choose a valid connection option.' },
@@ -105,6 +132,10 @@ export const handlers = [
   }),
   http.post(`${api}/tasks`, async ({ request }) => {
     await simulatedNetwork.wait('write');
+    const unauthorized = sessionError(request);
+    if (unauthorized) {
+      return unauthorized;
+    }
     if (request.signal.aborted) {
       return HttpResponse.error();
     }
@@ -120,6 +151,10 @@ export const handlers = [
     }
     try {
       const members = await repository.members();
+      const expired = sessionError(request);
+      if (expired) {
+        return expired;
+      }
       if (
         result.data.assigneeId &&
         !members.some((member) => member.id === result.data.assigneeId)
@@ -133,6 +168,10 @@ export const handlers = [
   }),
   http.patch(`${api}/tasks/:id`, async ({ request, params }) => {
     await simulatedNetwork.wait('write');
+    const unauthorized = sessionError(request);
+    if (unauthorized) {
+      return unauthorized;
+    }
     if (request.signal.aborted) {
       return HttpResponse.error();
     }
@@ -148,6 +187,10 @@ export const handlers = [
     }
     try {
       const members = await repository.members();
+      const expired = sessionError(request);
+      if (expired) {
+        return expired;
+      }
       if (
         result.data.assigneeId &&
         !members.some((member) => member.id === result.data.assigneeId)
@@ -162,8 +205,33 @@ export const handlers = [
       return errorResponse();
     }
   }),
-  http.post(`${api}/reset`, async () => {
+  http.delete(`${api}/tasks/:id`, async ({ request, params }) => {
     await simulatedNetwork.wait('write');
+    const unauthorized = sessionError(request);
+    if (unauthorized) {
+      return unauthorized;
+    }
+    if (request.signal.aborted) {
+      return HttpResponse.error();
+    }
+    if (simulatedNetwork.consumeWriteFailure()) {
+      return failedWrite();
+    }
+    try {
+      const id = String(params.id);
+      return (await repository.delete(id))
+        ? HttpResponse.json({ id })
+        : HttpResponse.json({ message: 'This task no longer exists.' }, { status: 404 });
+    } catch {
+      return errorResponse('This task could not be deleted. Try again.');
+    }
+  }),
+  http.post(`${api}/reset`, async ({ request }) => {
+    await simulatedNetwork.wait('write');
+    const unauthorized = sessionError(request);
+    if (unauthorized) {
+      return unauthorized;
+    }
     try {
       const samples = await repository.reset();
       simulatedNetwork.configure({ failNextWrite: false });

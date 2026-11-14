@@ -12,6 +12,7 @@ export interface DemoInfo extends DemoSettings {
   taskCount: number;
   userCount: number;
   changes: number;
+  persistence: 'local' | 'memory';
 }
 
 export interface SampleData {

@@ -55,7 +55,7 @@ export function SampleDataControls() {
       onSuccess: () => {
         setReloadOpen(false);
         toast.success('Sample data reloaded', {
-          description: 'Temporary tasks and edits have been cleared.',
+          description: 'Created tasks, edits, and deletions have been cleared.',
         });
       },
       onError: (error) => {
@@ -132,7 +132,9 @@ export function SampleDataControls() {
                   </p>
                 </div>
                 <p className="sample-controls-memory-note">
-                  Changes stay in memory until you reload the page or samples.
+                  {info.data?.persistence === 'memory'
+                    ? 'Browser storage is unavailable. Changes will be lost when you reload.'
+                    : 'Changes are saved for your current session. Signing out or reloading samples clears them.'}
                 </p>
               </Popover.Content>
             </Popover.Portal>
@@ -153,7 +155,7 @@ export function SampleDataControls() {
         )}
         {changeCount > 0 && (
           <p className="sample-controls-changes">
-            {countFormatter.format(changeCount)} temporary{' '}
+            {countFormatter.format(changeCount)}{' '}
             {changeCount === 1 ? 'change' : 'changes'}
           </p>
         )}
@@ -200,8 +202,8 @@ export function SampleDataControls() {
           </span>
           <DialogTitle>Reload sample data?</DialogTitle>
           <DialogDescription>
-            Replace the current tasks and users with the original samples. Temporary tasks
-            and edits will be removed. Reloading the page also restores the samples.
+            Replace the current tasks and users with the original samples. Created tasks,
+            saved edits, and deletions will be cleared for this session.
           </DialogDescription>
           {reloadError && (
             <p className="field-error" role="alert">

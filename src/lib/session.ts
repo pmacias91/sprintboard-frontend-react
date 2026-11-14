@@ -9,6 +9,7 @@ const LEGACY_SESSION_KEY = 'sprintboard.session.v2';
 const FIRST_SESSION_KEY = 'sprintboard.session.v1';
 const maxTimerDelay = 2_147_483_647;
 const sessionSchema = z.object({
+  id: z.string().min(1).optional(),
   user: sessionUserSchema,
   expiresAt: z.number().int().positive().nullable(),
 });
@@ -55,6 +56,10 @@ function readSession(): StoredSession | null {
   } catch {
     return null;
   }
+}
+
+function getSessionId(): string | null {
+  return readSession()?.id ?? null;
 }
 
 function cookieAttributes(): string {
@@ -121,7 +126,15 @@ function migrateLegacySession(): void {
   }
 
   try {
-    if (readSession() || localStorage.getItem(SESSION_SIGNAL_KEY)) {
+    const current = readSession();
+    if (current) {
+      if (!current.id) {
+        writeSessionCookie({ ...current, id: crypto.randomUUID() });
+      }
+      clearLegacySessions();
+      return;
+    }
+    if (localStorage.getItem(SESSION_SIGNAL_KEY)) {
       clearLegacySessions();
       return;
     }
@@ -136,7 +149,7 @@ function migrateLegacySession(): void {
         (firstUser.success ? { user: firstUser.data, expiresAt: null } : null));
 
     if (session) {
-      writeSessionCookie(session);
+      writeSessionCookie({ ...session, id: crypto.randomUUID() });
       clearLegacySessions();
       signalChange();
     }
@@ -204,6 +217,7 @@ function subscribe(listener: () => void): () => void {
 
 function save(user: SessionUser, rememberMe: boolean): void {
   const session: StoredSession = {
+    id: crypto.randomUUID(),
     user: sessionUserSchema.parse(user),
     expiresAt: rememberMe
       ? Date.now() + REMEMBER_SESSION_DAYS * 24 * 60 * 60 * 1000
@@ -222,4 +236,4 @@ function clear(): void {
 
 migrateLegacySession();
 
-export const sessionStore = { getSnapshot, subscribe, save, clear };
+export const sessionStore = { getSnapshot, getSessionId, subscribe, save, clear };

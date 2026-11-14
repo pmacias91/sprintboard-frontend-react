@@ -104,7 +104,7 @@ export async function verifySampleRestoration(page: Page): Promise<void> {
     '1,000 tasks',
   );
 
-  // A full page reload also restores the JSON baseline; the authentication is retained.
+  // A full page reload preserves changes as long as the session remains active.
   await page.getByRole('button', { name: 'New task', exact: true }).click();
   const create = page.getByRole('dialog', { name: 'Create task' });
   await create
@@ -120,6 +120,21 @@ export async function verifySampleRestoration(page: Page): Promise<void> {
   await expect(
     page.getByRole('button', { name: originalTitle, exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Open SPR-1101: Check sample refresh behavior' }),
+  ).toBeVisible();
+  await expect(page.getByLabel('Sample data', { exact: true })).toContainText(
+    '1,001 tasks',
+  );
+  await page.getByRole('button', { name: /^Open SPR-1101:/ }).click();
+  await page
+    .getByRole('dialog', { name: 'Task details' })
+    .getByRole('button', { name: 'Delete task' })
+    .click();
+  const deletion = page.getByRole('dialog', { name: 'Delete task?' });
+  await deletion.getByRole('button', { name: 'Delete task' }).click();
+  await expect(deletion).not.toBeVisible();
+  await page.reload();
   await expect(page.getByRole('button', { name: /^Open SPR-1101:/ })).toHaveCount(0);
   await expect(page.getByLabel('Sample data', { exact: true })).toContainText(
     '1,000 tasks',

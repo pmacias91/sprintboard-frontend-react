@@ -9,14 +9,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const subscribe = useCallback(
     (onChange: () => void) => {
-      let userId = sessionStore.getSnapshot()?.id;
+      let sessionId = sessionStore.getSessionId();
 
       return sessionStore.subscribe(() => {
-        const nextUserId = sessionStore.getSnapshot()?.id;
+        const nextSessionId = sessionStore.getSessionId();
 
-        if (nextUserId !== userId) {
+        if (nextSessionId !== sessionId) {
           queryClient.clear();
-          userId = nextUserId;
+          sessionId = nextSessionId;
         }
 
         onChange();

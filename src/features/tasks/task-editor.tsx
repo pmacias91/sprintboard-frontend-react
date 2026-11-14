@@ -1,4 +1,5 @@
 import { Controller, useForm } from 'react-hook-form';
+import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   ArrowUpRight,
@@ -7,6 +8,7 @@ import {
   Link2,
   LoaderCircle,
   Plus,
+  Trash2,
   UserRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,7 +22,7 @@ import { Button } from '../../components/ui/button';
 import { Select } from '../../components/ui/select';
 import { Tooltip } from '../../components/ui/tooltip';
 import { Avatar, LabelBadge, PriorityIcon, StatusIcon } from '../../components/task-meta';
-import { useSaveTask } from '../../hooks/use-tasks';
+import { useDeleteTask, useSaveTask } from '../../hooks/use-tasks';
 import {
   CURRENT_USER_ID,
   priorities,
@@ -52,6 +54,9 @@ export function TaskEditor({
 }) {
   const task = editor.task;
   const save = useSaveTask(task?.id);
+  const remove = useDeleteTask();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const busy = save.isPending || remove.isPending;
   const {
     register,
     control,
@@ -90,11 +95,26 @@ export function TaskEditor({
     }
   });
 
+  async function deleteTask() {
+    if (!task) {
+      return;
+    }
+    try {
+      await remove.mutateAsync(task.id);
+      toast.success(`${task.id} deleted`, {
+        description: 'Task removed from the board.',
+      });
+      onClose();
+    } catch {
+      // Keep the confirmation open so the user can retry or cancel.
+    }
+  }
+
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !save.isPending) {
+        if (!open && !busy) {
           onClose();
         }
       }}
@@ -102,12 +122,12 @@ export function TaskEditor({
       <DialogContent
         className="task-editor"
         onEscapeKeyDown={(event) => {
-          if (save.isPending) {
+          if (busy) {
             event.preventDefault();
           }
         }}
         onPointerDownOutside={(event) => {
-          if (save.isPending) {
+          if (busy) {
             event.preventDefault();
           }
         }}
@@ -144,7 +164,7 @@ export function TaskEditor({
           }}
           className="editor-form"
         >
-          <fieldset disabled={save.isPending}>
+          <fieldset disabled={busy}>
             <div className="form-field">
               <label htmlFor="task-title">
                 Task title <span className="required">*</span>
@@ -289,23 +309,30 @@ export function TaskEditor({
             </div>
           )}
           <div className="editor-footer">
-            <span className="save-note">
-              <span className="local-dot" />
-              Changes kept in memory
-            </span>
-            <div className="editor-actions">
+            {task ? (
               <Button
                 type="button"
-                variant="outline"
-                disabled={save.isPending}
-                onClick={onClose}
+                variant="danger"
+                disabled={busy}
+                onClick={() => {
+                  remove.reset();
+                  setConfirmDelete(true);
+                }}
               >
+                <Trash2 size={15} />
+                Delete task
+              </Button>
+            ) : (
+              <span className="save-note">
+                <span className="local-dot" />
+                Saved for this session
+              </span>
+            )}
+            <div className="editor-actions">
+              <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={save.isPending || (Boolean(task) && !isDirty)}
-              >
+              <Button type="submit" disabled={busy || (Boolean(task) && !isDirty)}>
                 {save.isPending ? (
                   <LoaderCircle size={15} className="animate-spin" />
                 ) : task ? (
@@ -318,6 +345,63 @@ export function TaskEditor({
             </div>
           </div>
         </form>
+        <Dialog
+          open={confirmDelete}
+          onOpenChange={(open) => {
+            if (!remove.isPending) {
+              setConfirmDelete(open);
+            }
+          }}
+        >
+          <DialogContent
+            className="small-dialog"
+            onEscapeKeyDown={(event) => {
+              if (remove.isPending) {
+                event.preventDefault();
+              }
+            }}
+            onPointerDownOutside={(event) => {
+              if (remove.isPending) {
+                event.preventDefault();
+              }
+            }}
+          >
+            <span className="dialog-symbol">
+              <Trash2 size={23} />
+            </span>
+            <DialogTitle>Delete task?</DialogTitle>
+            <DialogDescription>
+              Delete {task?.id}: {task?.title}? This cannot be undone. Reload samples to
+              restore the original sample tasks.
+            </DialogDescription>
+            {remove.isError && (
+              <p className="field-error" role="alert">
+                {remove.error.message}
+              </p>
+            )}
+            <div className="confirm-actions">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={remove.isPending}
+                onClick={() => setConfirmDelete(false)}
+                autoFocus
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                disabled={remove.isPending}
+                aria-busy={remove.isPending}
+                onClick={() => void deleteTask()}
+              >
+                {remove.isPending && <LoaderCircle size={15} className="animate-spin" />}
+                {remove.isPending ? 'Deleting…' : 'Delete task'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );

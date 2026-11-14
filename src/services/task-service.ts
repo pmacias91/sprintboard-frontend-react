@@ -13,4 +13,8 @@ export const taskService = {
   update(id: string, changes: Partial<TaskInput>): Promise<Task> {
     return httpClient.patch<Task>(`/tasks/${encodeURIComponent(id)}`, changes);
   },
+
+  delete(id: string): Promise<{ id: string }> {
+    return httpClient.delete(`/tasks/${encodeURIComponent(id)}`);
+  },
 };
